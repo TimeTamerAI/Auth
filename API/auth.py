@@ -1,18 +1,21 @@
-import json
 import base64
-import traceback
+import json
 import logging
+import traceback
+
 import redis
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from firebase_admin import auth, credentials, initialize_app
 from pydantic import BaseModel
+
 from settings import (BASE_URL, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT,
                       REDIS_TLS_CERT_PATH, SERVICE_ACCOUNT_KEY)
 from Token.token import SessionTokenManager
 
-
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="[%(asctime)s] [%(levelname)s] - %(message)s"
+)
 
 origins = [
     BASE_URL,  # Frontend origin
@@ -53,11 +56,11 @@ class SignupRequest(BaseModel):
 
 def decode_jwt_payload(jwt_token):
     # Split the token into its parts: header, payload, signature
-    header, payload, signature = jwt_token.split('.')
+    header, payload, signature = jwt_token.split(".")
 
     # Decode the payload
     payload += "=" * ((4 - len(payload) % 4) % 4)  # Ensure padding exists
-    decoded_payload = base64.urlsafe_b64decode(payload).decode('utf-8')
+    decoded_payload = base64.urlsafe_b64decode(payload).decode("utf-8")
 
     return json.loads(decoded_payload)
 
@@ -126,15 +129,17 @@ async def start_session(data: dict) -> dict:
     Returns:
     - dict: The session token.
     """
-    logging.info(f"start_session endpoint called with token: {data.get('firebase_token')}")
+    logging.info(
+        f"start_session endpoint called with token: {data.get('firebase_token')}"
+    )
     try:
         firebase_token = data.get("firebase_token")
         if not firebase_token:
             raise HTTPException(status_code=400, detail="Missing firebase_token")
 
         decoded_payload = decode_jwt_payload(firebase_token)
-        print("Issued At (iat):", decoded_payload.get('iat'))
-        print("Not Before (nbf):", decoded_payload.get('nbf'))
+        print("Issued At (iat):", decoded_payload.get("iat"))
+        print("Not Before (nbf):", decoded_payload.get("nbf"))
 
         # Verify the Firebase token
         decoded_token = auth.verify_id_token(firebase_token)
@@ -154,7 +159,6 @@ async def start_session(data: dict) -> dict:
     except Exception as e:
         logging.exception("Error in start_session: %s", str(e))
         raise HTTPException(status_code=401, detail=str(e))
-
 
 
 @app.post("/revoke_session")
