@@ -1,17 +1,13 @@
-from fastapi import FastAPI, HTTPException, Depends, Request
-from firebase_admin import auth, initialize_app, credentials
 import json
-import redis
-from Token.token import SessionTokenManager
-from settings import (
-    REDIS_HOST,
-    REDIS_PORT,
-    REDIS_PASSWORD,
-    REDIS_TLS_CERT_PATH,
-    SERVICE_ACCOUNT_KEY,
-    BASE_URL,
-)
 import traceback
+
+import redis
+from fastapi import Depends, FastAPI, HTTPException, Request
+from firebase_admin import auth, credentials, initialize_app
+
+from settings import (BASE_URL, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT,
+                      REDIS_TLS_CERT_PATH, SERVICE_ACCOUNT_KEY)
+from Token.token import SessionTokenManager
 
 app = FastAPI()
 

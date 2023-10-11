@@ -1,5 +1,5 @@
-from typing import Optional
 import os
+from typing import Optional
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
