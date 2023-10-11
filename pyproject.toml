@@ -7,6 +7,10 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
+fastapi = "^0.103.2"
+firebase-admin = "^6.2.0"
+redis = "^5.0.1"
+slowapi = "^0.1.8"
 
 
 [tool.poetry.group.dev.dependencies]
