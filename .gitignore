@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+#pycharm
+.idea/
+
 # Distribution / packaging
 .Python
 build/
@@ -65,9 +68,12 @@ db.sqlite3-journal
 instance/
 .webassets-cache
 
+#other
+timetamer.json
+
 # Scrapy stuff:
 .scrapy
-
+*.pem
 # Sphinx documentation
 docs/_build/
 
