@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  auth:
+    build: .
+    ports:
+      - "5000:80"
+    volumes:
+      - .:/app
+    environment:
+      - ENVIRONMENT=dev
+    env_file:
+      - .env

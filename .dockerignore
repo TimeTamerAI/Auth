@@ -1,0 +1,39 @@
+# Git directory and files
+.git
+.gitignore
+
+# Cache directories
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Test directory
+tests/
+
+# Virtual environments
+venv/
+env/
+
+# IDE directories
+.idea/
+.vscode/
+
+# Log and temp files
+*.log
+*.swp
+*.bak
+*.tmp
+
+# OS generated files
+.DS_Store
+ehthumbs.db
+Thumbs.db
+
+# Docker files
+Dockerfile
+docker-compose.yml
+
+# Other
+README.md
