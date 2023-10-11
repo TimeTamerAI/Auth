@@ -9,5 +9,3 @@ services:
       - .:/app
     environment:
       - ENVIRONMENT=dev
-    env_file:
-      - .env
