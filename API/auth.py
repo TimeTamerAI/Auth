@@ -9,6 +9,9 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from firebase_admin import credentials, initialize_app
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from tortoise.exceptions import IntegrityError
 
 from db_config import close_db, init_db
@@ -25,8 +28,13 @@ origins = [
     # Add any other origins if needed
 ]
 
+limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI()
+
+# Set up a rate limit exceeded handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 @app.on_event("startup")
@@ -130,8 +138,9 @@ async def endpoint_verify_token_fetch_user(request: Request) -> dict:
         return {"status": "invalid", "detail": str(he.detail)}
 
 
+@limiter.limit("5/minute")  # Limiting to 5 requests per minute
 @app.post("/signup")
-async def signup(request_data: SignupRequest) -> dict:
+async def signup(request: Request, request_data: SignupRequest) -> dict:
     """
      Generate a verification link for the user's email for sign-up.
 
@@ -167,8 +176,9 @@ async def signup(request_data: SignupRequest) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@limiter.limit("5/minute")  # Limiting to 5 requests per minute
 @app.post("/start_session")
-async def start_session(data: dict) -> dict:
+async def start_session(request: Request, data: dict) -> dict:
     """
     Starts a session for the authenticated user.
 
@@ -234,8 +244,11 @@ async def start_session(data: dict) -> dict:
         raise HTTPException(status_code=401, detail=str(e))
 
 
+@limiter.limit("5/minute")  # Limiting to 5 requests per minute
 @app.post("/revoke_session")
-async def revoke_session(token_data: dict = Depends(verify_session_token)) -> dict:
+async def revoke_session(
+    request: Request, token_data: dict = Depends(verify_session_token)
+) -> dict:
     """
     Revoke a session token.
 
@@ -259,8 +272,11 @@ async def revoke_session(token_data: dict = Depends(verify_session_token)) -> di
     return token_data
 
 
+@limiter.limit("5/minute")  # Limiting to 5 requests per minute
 @app.post("/logout")
-async def logout(token_data: dict = Depends(verify_session_token)) -> dict:
+async def logout(
+    request: Request, token_data: dict = Depends(verify_session_token)
+) -> dict:
     """
     Log the user out by deleting their session token.
 
