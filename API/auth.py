@@ -109,6 +109,24 @@ def verify_session_token(request: Request) -> dict:
     return json.loads(token_data)
 
 
+@app.get("/verify_and_fetch_user")
+async def endpoint_verify_token_fetch_user(request: Request) -> dict:
+    """
+    Endpoint to verify the validity of a provided session token and fetch the user's information.
+
+    Args:
+    - request (Request): The incoming request with the token in the Authorization header.
+
+    Returns:
+    - dict: A dictionary containing the status of verification and user information if valid.
+    """
+    try:
+        token_data = verify_session_token(request)
+        return {"status": "valid", "user_info": token_data.get("user_info", {})}
+    except HTTPException as he:
+        return {"status": "invalid", "detail": str(he.detail)}
+
+
 @app.post("/signup")
 async def signup(request_data: SignupRequest) -> dict:
     """

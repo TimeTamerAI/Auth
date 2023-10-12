@@ -164,3 +164,45 @@ def test_get_user_profile_valid():
             "name": "John Doe",
             "email": "john@example.com",
         }
+
+
+def test_verify_and_fetch_user_valid():
+    """
+    Test the `/verify_and_fetch_user` endpoint to verify a valid session token and retrieve the user's information.
+
+    This test mocks the verification of the session token and the Redis client to return predefined token data.
+    It then verifies that the endpoint correctly decodes the session token and returns the user's profile data.
+    """
+    with patch("API.auth.verify_session_token", return_value=valid_token_data):
+        # Mock Redis client
+        with patch(
+            "API.auth.redis_client.get", return_value=json.dumps(valid_token_data)
+        ):
+            headers = {"Authorization": "Bearer sample_session_token"}
+            response = client.get("/verify_and_fetch_user", headers=headers)
+        assert response.status_code == 200
+        assert response.json() == {
+            "status": "valid",
+            "user_info": {
+                "firebase_uid": "sample_uid",
+                "name": "John Doe",
+                "email": "john@example.com",
+            },
+        }
+
+
+def test_verify_and_fetch_user_invalid():
+    """
+    Test the `/verify_and_fetch_user` endpoint to verify an invalid session token.
+
+    This test mocks the Redis client to return None (indicating the token is not present in Redis).
+    It then verifies that the endpoint returns an invalid status.
+    """
+    with patch("API.auth.redis_client.get", return_value=None):
+        headers = {"Authorization": "Bearer invalid_token"}
+        response = client.get("/verify_and_fetch_user", headers=headers)
+        assert response.status_code == 200
+        assert response.json() == {
+            "status": "invalid",
+            "detail": "Invalid session token",
+        }
