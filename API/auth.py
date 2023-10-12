@@ -2,10 +2,11 @@ import json
 import logging
 import traceback
 
+import firebase_admin.auth as firebase_auth
 import redis
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from firebase_admin import auth, credentials, initialize_app
+from firebase_admin import credentials, initialize_app
 from pydantic import BaseModel
 from tortoise.exceptions import IntegrityError
 
@@ -92,8 +93,6 @@ def verify_session_token(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="No session token provided")
 
     token_data = redis_client.get(session_token)
-    logging.info(f"Token data to verify: {token_data}")
-    logging.info(f"Token data to verify(after decode): {json.loads(token_data)}")
     if not token_data:
         raise HTTPException(status_code=401, detail="Invalid session token")
 
@@ -116,7 +115,7 @@ async def signup(request_data: SignupRequest) -> dict:
     name = request_data.name
     logging.info(f"Signup endpoint called with email: {email} and name: {name}")
     try:
-        user_record = auth.create_user(email=email, display_name=name)
+        user_record = firebase_auth.create_user(email=email, display_name=name)
 
         # Create user in the local database
         try:
@@ -124,11 +123,13 @@ async def signup(request_data: SignupRequest) -> dict:
         except IntegrityError:
             raise HTTPException(status_code=400, detail="User already exists")
 
-        action_code_settings = auth.ActionCodeSettings(
+        action_code_settings = firebase_auth.ActionCodeSettings(
             url=f"{BASE_URL}/login",
         )
 
-        link = auth.generate_email_verification_link(email, action_code_settings)
+        link = firebase_auth.generate_email_verification_link(
+            email, action_code_settings
+        )
         return {"link": link, "user_id": user_record.uid}
 
     except Exception as e:
@@ -169,7 +170,7 @@ async def start_session(data: dict) -> dict:
             raise HTTPException(status_code=400, detail="Missing firebase_token")
 
         # Verify the Firebase token
-        decoded_token = auth.verify_id_token(firebase_token)
+        decoded_token = firebase_auth.verify_id_token(firebase_token)
         uid = decoded_token["uid"]
 
         # Fetch the user details from the database using the uid
