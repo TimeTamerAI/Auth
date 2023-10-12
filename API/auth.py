@@ -56,8 +56,11 @@ app.add_middleware(
 )
 
 # Initialize Firebase Admin SDK
-cred = credentials.Certificate(SERVICE_ACCOUNT_KEY)
-initialize_app(cred)
+if os.environ.get("ENV") != "TEST":
+    cred = credentials.Certificate(SERVICE_ACCOUNT_KEY)
+    initialize_app(cred)
+else:
+    initialize_app()
 
 redis_client = redis.StrictRedis(
     host=REDIS_HOST,
