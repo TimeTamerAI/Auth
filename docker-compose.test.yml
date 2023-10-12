@@ -7,5 +7,11 @@ services:
       dockerfile: Dockerfile.test
     environment:
       - ENV=TEST
+      - SERVICE_ACCOUNT_KEY
+      - REDIS_HOST
+      - REDIS_PORT
+      - REDIS_PASSWORD
+      - REDIS_TLS_CERT_PATH
+      - BASE_URL
     volumes:
       - .:/app
