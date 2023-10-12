@@ -138,6 +138,27 @@ async def signup(request_data: SignupRequest) -> dict:
 
 @app.post("/start_session")
 async def start_session(data: dict) -> dict:
+    """
+    Starts a session for the authenticated user.
+
+    This function performs the following steps:
+    1. Extracts the Firebase token from the provided data.
+    2. Verifies the Firebase token.
+    3. Fetches the user's details from the database using the UID from the decoded token.
+    4. Generates a session token using the user's details.
+    5. Stores the session token and its associated data in Redis.
+    6. Returns the session token as a response.
+
+    Args:
+    - data (dict): A dictionary containing the Firebase token.
+
+    Returns:
+    - dict: A dictionary containing the session token for the authenticated user.
+
+    Raises:
+    - HTTPException: If the Firebase token is missing or if the user is not found in the database.
+    - Any exceptions that might occur during token verification, session token generation, or Redis operations.
+    """
     logging.info(
         f"start_session endpoint called with token: {data.get('firebase_token')}"
     )
@@ -234,6 +255,26 @@ async def logout(token_data: dict = Depends(verify_session_token)) -> dict:
 async def get_user_profile(
     token_data: dict = Depends(verify_session_token),
 ) -> UserProfile:
+    """
+    Retrieves the profile information of the authenticated user.
+
+    This function performs the following steps:
+    1. Extracts the `user_info` dictionary from the provided token data.
+    2. Extracts the user's Firebase UID, name, and email from the `user_info`.
+    3. Checks the completeness of the extracted details.
+    4. Returns the user's profile information as a `UserProfile` model.
+
+    Note: To ensure the user exists in the database, uncomment the relevant lines in the function.
+
+    Args:
+    - token_data (dict): A dictionary containing the decoded session token data.
+
+    Returns:
+    - UserProfile: A model containing the user's Firebase UID, name, and email.
+
+    Raises:
+    - HTTPException: If the user details in the token are incomplete or if there are any other exceptions during processing.
+    """
     try:
         # Get the user_info dictionary from the token_data
         user_info = token_data.get("user_info", {})
