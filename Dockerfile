@@ -8,9 +8,12 @@ WORKDIR /app
 COPY . /app
 
 # Install Poetry and dependencies
-RUN pip install --no-cache-dir poetry \
+RUN apt-get update && apt-get install -y iputils-ping \
+    && pip install --no-cache-dir poetry \
     && poetry config virtualenvs.create false \
-    && poetry install
+    && poetry install \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Make port 80 available to the world outside this container
 EXPOSE 80

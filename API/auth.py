@@ -1,4 +1,3 @@
-import base64
 import json
 import logging
 import traceback
@@ -8,9 +7,11 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from firebase_admin import auth, credentials, initialize_app
 from pydantic import BaseModel
+from tortoise.exceptions import IntegrityError
 
-from settings import (BASE_URL, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT,
-                      REDIS_TLS_CERT_PATH, SERVICE_ACCOUNT_KEY)
+from db_config import close_db, init_db
+from Model.user import User, UserProfile
+from settings import BASE_URL, REDIS_HOST, REDIS_PORT, SERVICE_ACCOUNT_KEY
 from Token.token import SessionTokenManager
 
 logging.basicConfig(
@@ -24,6 +25,17 @@ origins = [
 
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+async def startup_event():
+    await init_db()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await close_db()
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,18 +63,8 @@ token_manager = SessionTokenManager(redis_client)
 
 
 class SignupRequest(BaseModel):
+    name: str
     email: str
-
-
-def decode_jwt_payload(jwt_token):
-    # Split the token into its parts: header, payload, signature
-    header, payload, signature = jwt_token.split(".")
-
-    # Decode the payload
-    payload += "=" * ((4 - len(payload) % 4) % 4)  # Ensure padding exists
-    decoded_payload = base64.urlsafe_b64decode(payload).decode("utf-8")
-
-    return json.loads(decoded_payload)
 
 
 def verify_session_token(request: Request) -> dict:
@@ -79,10 +81,19 @@ def verify_session_token(request: Request) -> dict:
     - HTTPException: If the session token is missing or invalid.
     """
     session_token = request.headers.get("Authorization")
+
+    # Check if the token has the "Bearer " prefix and strip it
+    if session_token and session_token.startswith("Bearer "):
+        session_token = session_token[7:]
+
+    logging.info(f"session token to be verified: {session_token}")
+
     if not session_token:
         raise HTTPException(status_code=401, detail="No session token provided")
 
     token_data = redis_client.get(session_token)
+    logging.info(f"Token data to verify: {token_data}")
+    logging.info(f"Token data to verify(after decode): {json.loads(token_data)}")
     if not token_data:
         raise HTTPException(status_code=401, detail="Invalid session token")
 
@@ -93,18 +104,25 @@ def verify_session_token(request: Request) -> dict:
 @app.post("/signup")
 async def signup(request_data: SignupRequest) -> dict:
     """
-    Generate a verification link for the user's email for sign-up.
+     Generate a verification link for the user's email for sign-up.
 
     Args:
-    - email (str): The user's email address.
+     - request_data (SignupRequest): Contains the user's name and email.
 
-    Returns:
-    - dict: A message indicating the result of the operation.
+     Returns:
+     - dict: A message indicating the result of the operation.
     """
     email = request_data.email
-    logging.info(f"Signup endpoint called with email: {email}")
+    name = request_data.name
+    logging.info(f"Signup endpoint called with email: {email} and name: {name}")
     try:
-        user_record = auth.create_user(email=email)
+        user_record = auth.create_user(email=email, display_name=name)
+
+        # Create user in the local database
+        try:
+            await User.create(firebase_uid=user_record.uid, name=name, email=email)
+        except IntegrityError:
+            raise HTTPException(status_code=400, detail="User already exists")
 
         action_code_settings = auth.ActionCodeSettings(
             url=f"{BASE_URL}/login",
@@ -120,35 +138,37 @@ async def signup(request_data: SignupRequest) -> dict:
 
 @app.post("/start_session")
 async def start_session(data: dict) -> dict:
-    """
-    Start a server-side session after verifying the Firebase token.
-
-    Args:
-    - data (dict): JSON data containing the "firebase_token".
-
-    Returns:
-    - dict: The session token.
-    """
     logging.info(
         f"start_session endpoint called with token: {data.get('firebase_token')}"
     )
+
     try:
         firebase_token = data.get("firebase_token")
         if not firebase_token:
             raise HTTPException(status_code=400, detail="Missing firebase_token")
 
-        decoded_payload = decode_jwt_payload(firebase_token)
-        print("Issued At (iat):", decoded_payload.get("iat"))
-        print("Not Before (nbf):", decoded_payload.get("nbf"))
-
         # Verify the Firebase token
         decoded_token = auth.verify_id_token(firebase_token)
         uid = decoded_token["uid"]
 
-        # Generate a session token for your server-side session handling
+        # Fetch the user details from the database using the uid
+        user = await User.get(firebase_uid=uid)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user_info = {
+            "id": user.id,
+            "firebase_uid": user.firebase_uid,
+            "name": user.name,
+            "email": user.email,
+        }
+
+        # Generate a session token with the user details
         session_token, token_data = token_manager.generate_session_token(
-            uid, {"role": "user"}
+            uid, user_info=user_info
         )
+
+        # Store the session token and its data in Redis
         redis_client.setex(
             session_token,
             SessionTokenManager.TOKEN_EXPIRATION_SECONDS,
@@ -156,6 +176,7 @@ async def start_session(data: dict) -> dict:
         )
 
         return {"session_token": session_token}
+
     except Exception as e:
         logging.exception("Error in start_session: %s", str(e))
         raise HTTPException(status_code=401, detail=str(e))
@@ -206,4 +227,35 @@ async def logout(token_data: dict = Depends(verify_session_token)) -> dict:
         else:
             raise HTTPException(status_code=400, detail="Invalid session token")
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/me", response_model=UserProfile)
+async def get_user_profile(
+    token_data: dict = Depends(verify_session_token),
+) -> UserProfile:
+    try:
+        # Get the user_info dictionary from the token_data
+        user_info = token_data.get("user_info", {})
+
+        # Extract details from the user_info dictionary
+        firebase_uid = user_info.get("firebase_uid")
+        name = user_info.get("name")
+        email = user_info.get("email")
+
+        # Ensure all the necessary details are present
+        if not firebase_uid or not name or not email:
+            raise HTTPException(
+                status_code=400, detail="Incomplete user details in token"
+            )
+
+        # If you want to ensure the user exists in the database, uncomment the next lines
+        # user = await User.get(firebase_uid=firebase_uid)
+        # if not user:
+        #     raise HTTPException(status_code=404, detail="User not found")
+
+        return UserProfile(firebase_uid=firebase_uid, name=name, email=email)
+
+    except Exception as e:
+        logging.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
