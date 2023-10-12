@@ -23,8 +23,8 @@ class SessionTokenManager:
         self,
         uid: str,
         claims: Optional[Dict[str, Union[str, int]]] = None,
-        user_info: Optional[Dict[str, Union[str, int, str]]] = None,
-    ) -> Tuple[str, Dict[str, Union[str, int, Dict[str, Union[str, int, str]]]]]:
+        user_info: Optional[Dict[str, Union[str, int]]] = None,
+    ) -> Tuple[str, Dict[str, Union[str, int, Dict[str, Union[str, int]]]]]:
         """
         Generate a new session token for the given user ID and claims.
 

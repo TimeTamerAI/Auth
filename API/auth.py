@@ -23,11 +23,10 @@ logging.basicConfig(
     level=logging.INFO, format="[%(asctime)s] [%(levelname)s] - %(message)s"
 )
 
-origins = [
-    BASE_URL,  # Frontend origin
+origins: list[str] = [
+    BASE_URL or "http://localhost:3000",  # Frontend origin
     # Add any other origins if needed
 ]
-
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI()
@@ -38,7 +37,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     """
     Initialize the database connection on startup.
     """
@@ -47,7 +46,7 @@ async def startup_event():
 
 
 @app.on_event("shutdown")
-async def shutdown_event():
+async def shutdown_event() -> None:
     """
     Close the database connection on shutdown.
     """
