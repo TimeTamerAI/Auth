@@ -27,13 +27,18 @@ jobs:
       run: |
         docker-compose -f docker-compose.test.yml build
         docker-compose -f docker-compose.test.yml up --exit-code-from test
-      env:  # This section adds the environment variables
+      env:
         SERVICE_ACCOUNT_KEY: ${{ secrets.SERVICE_ACCOUNT_KEY }}
         REDIS_HOST: ${{ secrets.REDIS_HOST }}
         REDIS_PORT: ${{ secrets.REDIS_PORT }}
         REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
         REDIS_TLS_CERT_PATH: ${{ secrets.REDIS_TLS_CERT_PATH }}
         BASE_URL: http://localhost
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Clean up
       if: always()
