@@ -1,6 +1,7 @@
 import json
 import logging
 import traceback
+import os
 
 import firebase_admin.auth as firebase_auth
 import redis
@@ -30,12 +31,14 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def startup_event():
-    await init_db()
+    if os.environ.get("ENV") != "TEST":
+        await init_db()
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    await close_db()
+    if os.environ.get("ENV") != "TEST":
+        await close_db()
 
 
 app.add_middleware(
