@@ -31,12 +31,18 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def startup_event():
+    """
+    Initialize the database connection on startup.
+    """
     if os.environ.get("ENV") != "TEST":
         await init_db()
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    """
+    Close the database connection on shutdown.
+    """
     if os.environ.get("ENV") != "TEST":
         await close_db()
 
