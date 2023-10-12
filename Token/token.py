@@ -20,14 +20,18 @@ class SessionTokenManager:
         self.redis = redis_client
 
     def generate_session_token(
-        self, uid: str, claims: Optional[Dict[str, str]] = None
-    ) -> Tuple[str, Dict[str, Union[str, int, Dict[str, str]]]]:
+        self,
+        uid: str,
+        claims: Optional[Dict[str, Union[str, int]]] = None,
+        user_info: Optional[Dict[str, Union[str, int, str]]] = None,
+    ) -> Tuple[str, Dict[str, Union[str, int, Dict[str, Union[str, int, str]]]]]:
         """
         Generate a new session token for the given user ID and claims.
 
         Args:
         - uid (str): The unique identifier for the user.
         - claims (Optional[Dict[str, str]]): Additional claims to include in the token.
+        - user_info (Optional[Dict[str, Union[str, int, str]]]): User's additional information.
 
         Returns:
         - Tuple[str, Dict[str, Union[str, int, Dict[str, str]]]]: The generated session token and its data.
@@ -40,6 +44,10 @@ class SessionTokenManager:
             "expiry": int(time.time()) + self.TOKEN_EXPIRATION_SECONDS,
             "claims": claims or {},  # default to empty dict if no claims provided
         }
+
+        # Add user_info to token dictionary
+        if user_info:
+            token_dict["user_info"] = user_info
 
         # Convert token dictionary to string and hash it to produce the session token
         token_str = json.dumps(token_dict, sort_keys=True)
