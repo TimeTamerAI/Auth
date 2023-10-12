@@ -1,7 +1,7 @@
 # Auth
 Auth system
 
-Uses Firebase and MemoryStore
+Uses Firebase
 
 To run unit tests from thr main auth directory run:
 ```
