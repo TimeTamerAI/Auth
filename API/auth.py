@@ -1,7 +1,7 @@
 import json
 import logging
-import traceback
 import os
+import traceback
 
 import firebase_admin.auth as firebase_auth
 import redis
