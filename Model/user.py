@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from tortoise import fields
 from tortoise.models import Model
 
@@ -22,4 +22,4 @@ class UserProfile(BaseModel):
 
     firebase_uid: str
     name: str
-    email: str
+    email: EmailStr
